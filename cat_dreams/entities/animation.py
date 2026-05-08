@@ -10,34 +10,33 @@ class Animation:
         self.loop = loop
         self.current_frame = 0
         self.frame_timer = 0
-        self.start_frame = start_frame
+        self.start_frame = start_frame  # С какого кадра начинать
 
         path = os.path.join(cfg.SPRITES_PATH, filename)
-        sheet = pygame.image.load(path).convert_alpha()
-        # Вырезаем кадры сверху вниз
-        for i in range(start_frame, start_frame + num_frames):
-            rect = pygame.Rect(0, i * frame_h, frame_w, frame_h)
-            self.frames.append(sheet.subsurface(rect))
+        if os.path.exists(path):
+            sheet = pygame.image.load(path).convert_alpha()
+            # Вырезаем кадры сверху вниз
+            for i in range(start_frame, start_frame + num_frames):
+                rect = pygame.Rect(0, i * frame_h, frame_w, frame_h)
+                self.frames.append(sheet.subsurface(rect))
+        else:
+            print(f" Спрайт не найден: {path}")
 
     def update(self):
         if not self.frames:
             return
-        # Если всего 1 кадр, ничего не делаем
+
+        # Если всего 1 кадр (сидение), ничего не делаем
         if len(self.frames) <= 1:
             return
+
         self.frame_timer += 1
-        # меняем кадр каждые (60 / fps) кадров игры
+        # Скорость: меняем кадр каждые (60 / fps) кадров игры
         if self.frame_timer >= max(1, 60 // self.fps):
             self.current_frame += 1
             if self.current_frame >= len(self.frames):
-                if self.loop:
-                    self.current_frame = 0
-                else:
-                    len(self.frames) - 1
+                self.current_frame = 0 if self.loop else len(self.frames) - 1
             self.frame_timer = 0
 
     def get_frame(self):
-        if self.frames:
-            return self.frames[self.current_frame]
-        else:
-            return None
+        return self.frames[self.current_frame] if self.frames else None

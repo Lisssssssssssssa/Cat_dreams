@@ -36,7 +36,7 @@ class BSPNode:
             return self.right.get_room_center()
         return (self.x + self.width // 2, self.y + self.height // 2)
 
-    def split_until_tasks(self, target_rooms, min_size = 80):
+    def split_until_tasks(self, target_rooms, min_size=80):
         rooms_list = []
 
         def split(node):
@@ -64,12 +64,44 @@ class BSPNode:
         split(self)
         return rooms_list[:target_rooms]
 
+    def assign_task(self, rooms):
+        for i, node in enumerate(rooms):
+            node.task_id = i
+        return rooms
 
-def carve_corridor(grid, start, end):
+    def build_graph(self, rooms):
+        corridors = []
+        for i in range(len(rooms) - 1):
+            room_a = rooms[i]
+            room_b = rooms[i+1]
+            room_a.connected_to.append(room_b.task_id)
+            room_b.connected_to.append(room_a.task_id)
+            center_a = room_a.get_room_center()
+            center_b = room_b.get_room_center()
+
+            x1, x2 = sorted([center_a[0], center_b[0]])
+            y1 = center_a[1]
+            h_corridor = pygame.Rect(x1, y1-10, x2-x1, 20)
+            corridors.append(h_corridor)
+
+            y1, y2 = sorted([center_a[1], center_b[1]])
+            x2 = center_b[0]
+            v_corridor = pygame.Rect(x2 - 10, y1, 20, y2 - y1)
+            corridors.append(v_corridor)
+        return corridors
+
+
+def carve_corridor(grid, start, end, corridor_width):
     x1, y1 = start
     x2, y2 = end
     # L-shaped: horizontal then vertical
     for x in range(min(x1, x2), max(x1, x2) + 1):
-        grid[y1][x] = 0
+        if 0 <= y1 < len(grid) and 0 <= x < len(grid[0]):
+            for dy in range(-corridor_width // 2, corridor_width // 2 + 1):
+                if 0 <= y1 + dy < len(grid):
+                    grid[y1 + dy][x] = 0
     for y in range(min(y1, y2), max(y1, y2) + 1):
-        grid[y][x2] = 0
+        if 0 <= y < len(grid) and 0 <= x2 < len(grid[0]):
+            for dx in range(-corridor_width//2, corridor_width//2 + 1):
+                if 0 <= x2 + dx < len(grid[0]):
+                    grid[y][x2 + dx] = 0

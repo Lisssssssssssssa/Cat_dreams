@@ -105,3 +105,28 @@ def carve_corridor(grid, start, end, corridor_width):
             for dx in range(-corridor_width//2, corridor_width//2 + 1):
                 if 0 <= x2 + dx < len(grid[0]):
                     grid[y][x2 + dx] = 0
+
+
+def generate_level(width, height, num_tasks, min_room_size=80):
+    root = BSPNode(0, 0, width, height)
+    room_nodes = root.split_until_tasks(num_tasks, min_size=min_room_size)
+    room_nodes = root.assign_task(room_nodes)
+    corridors = root.build_graph(room_nodes)
+    is_valid = root.validate_bfs(room_nodes)
+
+    rooms = []
+    for node in room_nodes:
+        if node.room:
+            rx, ry, rw, rh = node.room
+            rooms.append({
+                'rect': pygame.Rect(rx, ry, rw, rh),
+                'task_id': node.task_id,
+                'center': node.get_center(),
+                'connected_to': node.connected_to
+            })
+    return {
+        'rooms': rooms,
+        'corridors': corridors,
+        'is_valid': is_valid,
+        'num_tasks': num_tasks
+    }

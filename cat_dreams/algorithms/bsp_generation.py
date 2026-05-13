@@ -1,6 +1,6 @@
 import random
 import pygame
-from collections import deque
+from bfs_validator import is_level_connected
 
 
 class BSPNode:
@@ -112,8 +112,7 @@ def generate_level(width, height, num_tasks, min_room_size=80):
     room_nodes = root.split_until_tasks(num_tasks, min_size=min_room_size)
     room_nodes = root.assign_task(room_nodes)
     corridors = root.build_graph(room_nodes)
-    is_valid = root.validate_bfs(room_nodes)
-
+    is_valid = is_level_connected(room_nodes)
     rooms = []
     for node in room_nodes:
         if node.room:

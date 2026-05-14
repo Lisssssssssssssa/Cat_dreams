@@ -1,6 +1,6 @@
 import random
 import pygame
-from bfs_validator import is_level_connected
+from .bfs_validator import is_level_connected
 
 
 class BSPNode:
@@ -16,7 +16,7 @@ class BSPNode:
         self.connected_to = []
 
     def create_rooms(self, padding=10):
-        if self.room is None:
+        if self.room is not None:
             return
         rw = self.width - padding * 2
         rh = self.height - padding * 2
@@ -50,12 +50,27 @@ class BSPNode:
                 if node.room:
                     rooms_list.append(node)
                 return
-            if node.width > node.height:
-                split_pos = random.randint(min_size, node.width - min_size)
+            can_split_vertical = node.width >= min_size * 2 + 1
+            can_split_horizontal = node.height >= min_size * 2 + 1
+
+            if not can_split_vertical and not can_split_horizontal:
+                # Не можем разделить ни в одном направлении → создаём комнату
+                node.create_rooms()
+                if node.room:
+                    rooms_list.append(node)
+                return
+
+            # Выбираем направление деления
+            if can_split_vertical and (not can_split_horizontal or node.width > node.height):
+                # Вертикальный разрез (делим по ширине)
+                max_split = node.width - min_size
+                split_pos = random.randint(min_size, max_split)
                 node.left = BSPNode(node.x, node.y, split_pos, node.height)
                 node.right = BSPNode(node.x + split_pos, node.y, node.width - split_pos, node.height)
             else:
-                split_pos = random.randint(min_size, node.height - min_size)
+                # Горизонтальный разрез (делим по высоте)
+                max_split = node.height - min_size
+                split_pos = random.randint(min_size, max_split)
                 node.left = BSPNode(node.x, node.y, node.width, split_pos)
                 node.right = BSPNode(node.x, node.y + split_pos, node.width, node.height - split_pos)
 
@@ -120,7 +135,7 @@ def generate_level(width, height, num_tasks, min_room_size=80):
             rooms.append({
                 'rect': pygame.Rect(rx, ry, rw, rh),
                 'task_id': node.task_id,
-                'center': node.get_center(),
+                'center': node.get_room_center(),
                 'connected_to': node.connected_to
             })
     return {

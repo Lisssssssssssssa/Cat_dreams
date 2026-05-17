@@ -95,3 +95,16 @@ class Cat(pygame.sprite.Sprite):
 
         # ИСПРАВЛЕНИЕ: Рисуем только целые координаты
         screen.blit(frame, (int(self.x), int(self.y)))
+
+    def draw_with_camera(self, screen, camera):
+        """Рисует кота с учётом камеры."""
+        frame = self.animations[self.current_animation].get_frame()
+        if not frame:
+            return
+
+        if not self.facing_right:
+            frame = pygame.transform.flip(frame, True, False)
+
+        # Применяем камеру к позиции кота
+        cam_pos = camera.apply_pos((int(self.x), int(self.y)))
+        screen.blit(frame, cam_pos)

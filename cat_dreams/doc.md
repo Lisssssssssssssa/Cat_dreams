@@ -1,38 +1,52 @@
-graph TD
-    %% === CORE LOOP ===
-    Main["main.py<br/>(Game Loop + States)<br/>States: MENU ←→ GAME ←→ EDITOR ←→ PAUSE ←→ CUTSCENE"]
+## 🏗️ Архитектура проекта Cat Dreams
 
-    %% === MANAGERS & RENDER ===
-    SceneMgr["SCENE MANAGER<br/>- current_scene<br/>- switch()<br/>- transitions"]
-    Renderer["RENDERER<br/>- camera<br/>- particles<br/>- effects"]
+### Диаграмма классов
 
-    %% === ENTITIES LAYER ===
-    Entities["ENTITIES<br/>Cat | Enemy | Platform<br/>- physics | ai | type<br/>- animations | path | rect<br/>- controls | state"]
+```mermaid
+classDiagram
+    class Cat {
+        -float x
+        -float y
+        -float velocity_x
+        -float velocity_y
+        -bool on_ground
+        -bool facing_right
+        -int width
+        -int height
+        -Rect rect
+        -dict animations
+        -str current_animation
+        +__init__(x, y)
+        +update(keys, platforms)
+        +jump()
+        +draw(screen)
+        -_check_collisions(platforms)
+    }
 
-    %% === COMPONENTS ===
-    Anim["Animation<br/>- frames<br/>- fps<br/>- update()"]
-    Camera["Camera System<br/>- zoom (0.4-5x)<br/>- state (rect)<br/>- apply()"]
+    class Animation {
+        -list frames
+        -int fps
+        -bool loop
+        -int current_frame
+        -int frame_timer
+        -int start_frame
+        +__init__(filename, frame_w, frame_h, num_frames, fps, loop, start_frame)
+        +update()
+        +get_frame() Image
+    }
 
-    %% === ALGORITHMS ===
-    Algos["ALGORITHMS<br/>BSPGenerator<br/>- split()<br/>- create_room()<br/>- build_corridors()"]
-    BFS["BFSValidator<br/>- is_connected()"]
+    class Config {
+        <<configuration>>
+        +int SCREEN_WIDTH
+        +int SCREEN_HEIGHT
+        +int FPS
+        +float GRAVITY
+        +float JUMP_POWER
+        +float SPEED
+        +str SPRITES_PATH
+    }
 
-    %% === GLOBAL SYSTEMS ===
-    Systems["SYSTEMS<br/>AudioManager<br/>SaveSystem<br/>InputHandler<br/>Pathfinder (A*)"]
-
-    %% === CONNECTIONS ===
-    Main --> SceneMgr
-    Main --> Renderer
-    SceneMgr --> Entities
-    Entities --> Anim
-    Entities --> Camera
-    Anim --> Algos
-    Algos --> BFS
-    Systems -.-> Main : "глобальные сервисы"
-
-    %% === STYLING ===
-    classDef default fill:#ffffff,stroke:#333333,stroke-width:1.5px,rx:5px,ry:5px;
-    classDef core fill:#e3f2fd,stroke:#1565c0,stroke-width:2px;
-    classDef sys fill:#fff8e1,stroke:#f57f17,stroke-width:1.5px,stroke-dasharray: 5 5;
-    class Main core;
-    class Systems sys;
+    Cat "1" *-- "many" Animation : contains
+    Cat ..> Config : uses
+    Animation ..> Config : uses
+```

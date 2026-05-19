@@ -2,6 +2,10 @@
 
 ### Диаграмма классов
 
+```mermaid## 🏗️ Архитектура проекта Cat Dreams
+
+### Диаграмма классов
+
 ```mermaid
 classDiagram
     class Config {
@@ -74,9 +78,8 @@ classDiagram
     }
 
     class MainGameLoop {
-        -str game_mode
-        -Cat cat
-        -Camera camera
+        -Cat 
+        -Camera 
         -Dict level_data
         +main()
         -handle_events()
@@ -97,16 +100,23 @@ classDiagram
     BSPGenerator --> BFSValidator : валидирует связность
     BFSValidator ..> BSPGenerator : возвращает результат
 
-    %% === СТИЛИЗАЦИЯ ===
-    classDef default fill:#ffffff,stroke:#333333,stroke-width:1.5px,rx:5px,ry:5px;
-    classDef core fill:#e3f2fd,stroke:#1565c0,stroke-width:2px;
-    classDef algo fill:#f3e5f5,stroke:#7b1fa2,stroke-width:1.5px;
-    classDef sys fill:#fff8e1,stroke:#f57f17,stroke-width:1.5px;
-    classDef data fill:#e8f5e9,stroke:#2e7d32,stroke-width:1px,stroke-dasharray: 5 5;
+    %% === СТИЛИЗАЦИЯ (добавлен color:#000000 для чёрного текста) ===
+    classDef default fill:#ffffff,stroke:#333333,stroke-width:1.5px,rx:5px,ry:5px,color:#000000;
+    classDef core fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#000000;
+    classDef algo fill:#f3e5f5,stroke:#7b1fa2,stroke-width:1.5px,color:#000000;
+    classDef sys fill:#fff8e1,stroke:#f57f17,stroke-width:1.5px,color:#000000;
+    classDef data fill:#e8f5e9,stroke:#2e7d32,stroke-width:1px,stroke-dasharray: 5 5,color:#000000;
 
     class MainGameLoop core
     class BSPGenerator algo
     class BFSValidator algo
+    class Camera sys
+    class Config data
+
+    class MainGameLoop core
+    class BSPGenerator algo
+    class BFSValidator algo
+
     class Camera sys
     class Config data
 ```

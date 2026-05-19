@@ -4,6 +4,17 @@
 
 ```mermaid
 classDiagram
+    class Config {
+        <<configuration>>
+        +int SCREEN_WIDTH
+        +int SCREEN_HEIGHT
+        +int FPS
+        +float GRAVITY
+        +float JUMP_POWER
+        +float SPEED
+        +str SPRITES_PATH
+    }
+
     class Cat {
         -float x
         -float y
@@ -35,18 +46,67 @@ classDiagram
         +get_frame() Image
     }
 
-    class Config {
-        <<configuration>>
-        +int SCREEN_WIDTH
-        +int SCREEN_HEIGHT
-        +int FPS
-        +float GRAVITY
-        +float JUMP_POWER
-        +float SPEED
-        +str SPRITES_PATH
+    class Camera {
+        -Rect state
+        -float zoom
+        -float target_zoom
+        +__init__(width, height)
+        +apply(entity_rect) Rect
+        +apply_pos(pos) Tuple
+        +update(target_rect)
+        +zoom_in()
+        +zoom_out()
+        +reset_zoom()
     }
 
-    Cat "1" *-- "many" Animation : contains
-    Cat ..> Config : uses
-    Animation ..> Config : uses
+    class BSPGenerator {
+        -BSPNode root
+        -int num_tasks
+        -int min_size
+        +__init__(width, height, num_tasks, min_size)
+        +generate_level() Dict
+        -split_until_tasks() List
+        -build_connectivity_graph() List
+    }
+
+    class BFSValidator {
+        +is_level_connected(rooms) bool
+    }
+
+    class MainGameLoop {
+        -str game_mode
+        -Cat cat
+        -Camera camera
+        -Dict level_data
+        +main()
+        -handle_events()
+        -update(dt)
+        -render()
+        -switch_state(mode)
+    }
+
+    %% === СВЯЗИ И ЗАВИСИМОСТИ ===
+    MainGameLoop --> Camera : управляет видом
+    MainGameLoop --> Cat : контролирует игрока
+    MainGameLoop --> BSPGenerator : запускает генерацию
+    MainGameLoop --> Config : читает настройки
+    Cat --> Animation : содержит (композиция)
+    Cat --> Config : использует физику
+    Animation --> Config : использует пути к ассетам
+    Camera --> Config : использует размеры экрана
+    BSPGenerator --> BFSValidator : валидирует связность
+    BFSValidator ..> BSPGenerator : возвращает результат
+
+    %% === СТИЛИЗАЦИЯ ===
+    classDef default fill:#ffffff,stroke:#333333,stroke-width:1.5px,rx:5px,ry:5px;
+    classDef core fill:#e3f2fd,stroke:#1565c0,stroke-width:2px;
+    classDef algo fill:#f3e5f5,stroke:#7b1fa2,stroke-width:1.5px;
+    classDef sys fill:#fff8e1,stroke:#f57f17,stroke-width:1.5px;
+    classDef data fill:#e8f5e9,stroke:#2e7d32,stroke-width:1px,stroke-dasharray: 5 5;
+
+    class MainGameLoop core
+    class BSPGenerator algo
+    class BFSValidator algo
+    class Camera sys
+    class Config data
 ```

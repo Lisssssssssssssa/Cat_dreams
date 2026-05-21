@@ -1,8 +1,46 @@
 import pygame
+import os
 import config as cfg
 from entities.cat import Cat
 from entities.zoom import Camera
 from algorithms.bsp_generation import generate_level
+
+
+def load_backgrounds():
+    """
+    Загружает фоны для комнат и коридоров из папки assets/backgrounds/
+    Возвращает словарь с поверхностями Pygame или None, если файл не найден.
+    """
+    backgrounds = {}
+    bg_dir = os.path.join('assets', 'backgrounds')
+
+    # 1. Загрузка фона комнат
+    room_file = os.path.join(bg_dir, 'rooms.jpg')
+    if os.path.exists(room_file):
+        try:
+            backgrounds['room'] = pygame.image.load(room_file).convert()
+            print(f"✅ Фон комнат загружен: {room_file}")
+        except Exception as e:
+            print(f"❌ Ошибка загрузки rooms.jpg: {e}")
+            backgrounds['room'] = None
+    else:
+        print(f"⚠️ Файл не найден: {room_file}")
+        backgrounds['room'] = None
+
+    # 2. Загрузка фона коридоров/стен
+    wall_file = os.path.join(bg_dir, 'walls.jpg')
+    if os.path.exists(wall_file):
+        try:
+            backgrounds['wall'] = pygame.image.load(wall_file).convert()
+            print(f"✅ Фон коридоров загружен: {wall_file}")
+        except Exception as e:
+            print(f"❌ Ошибка загрузки walls.jpg: {e}")
+            backgrounds['wall'] = None
+    else:
+        print(f"️ Файл не найден: {wall_file}")
+        backgrounds['wall'] = None
+
+    return backgrounds
 
 
 def main():
@@ -14,8 +52,23 @@ def main():
     clock = pygame.time.Clock()
     font = pygame.font.SysFont("Arial", 16)
 
+    # === ЗАГРУЗКА ФОНОВ ===
+    backgrounds = load_backgrounds()
+
+    room_bg = backgrounds.get('room')
+    wall_bg = backgrounds.get('wall')
+
+    # Размеры тайлов для замощения (по умолчанию 64x64, если картинки нет)
+    r_w, r_h = (64, 64)
+    w_w, w_h = (64, 64)
+
+    if room_bg:
+        r_w, r_h = room_bg.get_size()
+    if wall_bg:
+        w_w, w_h = wall_bg.get_size()
+
     # Генерация уровня
-    print("Генерация уровня...")
+    print("🏗️ Генерация уровня...")
     level_data = generate_level(
         width=cfg.SCREEN_WIDTH,
         height=cfg.SCREEN_HEIGHT,
@@ -40,7 +93,7 @@ def main():
     start_room = level_data['rooms'][0]['rect']
     cat = Cat(start_room.x + 50, start_room.y + 20)
 
-    # Платформы
+    # Платформы (комнаты + коридоры)
     platforms = []
     for room in level_data['rooms']:
         platforms.append(room['rect'])
@@ -85,30 +138,21 @@ def main():
                                 # === ДИНАМИЧЕСКИЙ ЗУМ ===
                                 room_w = room['rect'].width
                                 room_h = room['rect'].height
-
-                                # Сколько раз комната помещается в экран по ширине/высоте
                                 zoom_x = cfg.SCREEN_WIDTH / room_w
                                 zoom_y = cfg.SCREEN_HEIGHT / room_h
                                 base_zoom = min(zoom_x, zoom_y)
-
-                                # Коэффициент отступа (0.85 = комната займёт ~85% экрана)
                                 PADDING_FACTOR = 0.85
                                 target_zoom = base_zoom * PADDING_FACTOR
-
-                                # Ограничиваем зум разумными пределами
                                 target_zoom = max(0.4, min(target_zoom, 5.0))
 
-                                # Применяем мгновенно
                                 camera.zoom = target_zoom
                                 camera.target_zoom = target_zoom
-
-                                # Центрируем камеру с учётом нового зума
                                 camera.state.x = room['rect'].centerx - (cfg.SCREEN_WIDTH / 2) / target_zoom
                                 camera.state.y = room['rect'].centery - (cfg.SCREEN_HEIGHT / 2) / target_zoom
 
-                                # Спавним кота ВНУТРИ комнаты (по центру, на полу)
+                                # Спавним кота ВНУТРИ комнаты
                                 cat.x = room['rect'].centerx - (cat.width // 2)
-                                cat.y = room['rect'].y + 50  # Ставим кота ближе к верху комнаты (внутри видимой зоны)
+                                cat.y = room['rect'].y + 50
                                 cat.velocity_x = 0
                                 cat.velocity_y = 0
                                 cat.on_ground = False
@@ -118,36 +162,54 @@ def main():
         keys = pygame.key.get_pressed()
 
         if game_mode == 'overview':
-            # Общий вид: камера показывает весь уровень
             camera.update()
             cat.update(keys, platforms)
         else:
-            # Режим редактирования комнаты
             if selected_room:
-                # Камера зафиксирована на комнате (не двигается)
-                # Только кот двигается внутри комнаты
                 cat.update(keys, [selected_room['rect']])
 
         # === ОТРИСОВКА ===
         screen.fill(cfg.BLACK)
 
         if game_mode == 'overview':
-            # Рисуем коридоры
+            # --- СЛОЙ 1: ФОН СТЕН (заполняет весь экран как база) ---
+            if wall_bg:
+                # Вычисляем смещение для бесконечного замощения относительно камеры
+                offset_x = int(-camera.state.x % w_w)
+                offset_y = int(-camera.state.y % w_h)
+
+                # Рисуем сетку тайлов, покрывающую экран с запасом
+                for y in range(-w_h, cfg.SCREEN_HEIGHT + w_h, w_h):
+                    for x in range(-w_w, cfg.SCREEN_WIDTH + w_w, w_w):
+                        screen.blit(wall_bg, (x + offset_x, y + offset_y))
+
+            # --- СЛОЙ 2: ФОН КОМНАТ (поверх стен) ---
+            if room_bg:
+                for room in level_data['rooms']:
+                    cam_rect = camera.apply(room['rect'])
+                    # Замощаем фон только внутри прямоугольника комнаты
+                    for y in range(cam_rect.top, cam_rect.bottom, r_h):
+                        for x in range(cam_rect.left, cam_rect.right, r_w):
+                            tile_rect = pygame.Rect(x, y, r_w, r_h)
+                            if tile_rect.colliderect(cam_rect):
+                                screen.blit(room_bg, (x, y))
+
+            # --- СЛОЙ 3: КОРИДОРЫ (как платформы, можно сделать полупрозрачными или цветными) ---
             for corridor in level_data['corridors']:
                 cam_rect = camera.apply(corridor)
-                pygame.draw.rect(screen, cfg.GREY, cam_rect)
+                # Рисуем коридоры серым цветом поверх фона стен, чтобы выделить путь
+                pygame.draw.rect(screen, (50, 50, 50), cam_rect)
 
-            # Рисуем комнаты
+                # --- СЛОЙ 4: РАМКИ И UI ---
             for room in level_data['rooms']:
                 cam_rect = camera.apply(room['rect'])
                 pygame.draw.rect(screen, cfg.BLUE, cam_rect, 2)
 
-                # Текст с номером задачи
                 text_pos = camera.apply_pos((room['rect'].x + 10, room['rect'].y + 10))
-                text = font.render(f"Task {room['task_id']} (клик для редактирования)", True, cfg.WHITE)
+                text = font.render(f"Task {room['task_id']} (клик)", True, cfg.WHITE)
                 screen.blit(text, text_pos)
 
-            # Рисуем кота (СПРАЙТ, а не квадрат!)
+            # Кот
             cat.draw_with_camera(screen, camera)
 
             # Подсказка
@@ -155,21 +217,36 @@ def main():
             screen.blit(hint, (10, cfg.SCREEN_HEIGHT - 30))
 
         else:
-            # Режим редактирования комнаты
+            # --- РЕЖИМ РЕДАКТИРОВАНИЯ КОМНАТЫ ---
             if selected_room:
-                # Рисуем комнату
+                # Фон стен на заднем плане
+                if wall_bg:
+                    offset_x = int(-camera.state.x % w_w)
+                    offset_y = int(-camera.state.y % w_h)
+                    for y in range(-w_h, cfg.SCREEN_HEIGHT + w_h, w_h):
+                        for x in range(-w_w, cfg.SCREEN_WIDTH + w_w, w_w):
+                            screen.blit(wall_bg, (x + offset_x, y + offset_y))
+
+                # Фон выбранной комнаты
+                if room_bg:
+                    cam_rect = camera.apply(selected_room['rect'])
+                    for y in range(cam_rect.top, cam_rect.bottom, r_h):
+                        for x in range(cam_rect.left, cam_rect.right, r_w):
+                            tile_rect = pygame.Rect(x, y, r_w, r_h)
+                            if tile_rect.colliderect(cam_rect):
+                                screen.blit(room_bg, (x, y))
+
+                # Рамка и UI
                 cam_rect = camera.apply(selected_room['rect'])
                 pygame.draw.rect(screen, cfg.BLUE, cam_rect, 3)
 
-                # Текст
                 text_pos = camera.apply_pos((selected_room['rect'].x + 10, selected_room['rect'].y + 10))
                 text = font.render(f"Task {selected_room['task_id']} (BACKSPACE - назад)", True, cfg.WHITE)
                 screen.blit(text, text_pos)
 
-                # Рисуем кота (СПРАЙТ, а не квадрат!)
+                # Кот
                 cat.draw_with_camera(screen, camera)
 
-                # Подсказка
                 hint = font.render("WASD - движение | Пробел - прыжок | BACKSPACE - назад", True, cfg.WHITE)
                 screen.blit(hint, (10, cfg.SCREEN_HEIGHT - 30))
 
